@@ -14,22 +14,6 @@
    git clone https://github.com/CHT7/DiabloNetwork.git
    ```
 
-2. **Cài đặt các phụ thuộc:**
-   Trong thư mục dự án, chạy:
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-3. **Chạy dự án:**
-   Sau khi cài đặt xong, bạn có thể chạy công cụ quét mạng:
-   ```bash
-   python main.py
-   ```
-
-## Yêu Cầu:
-- Python 3.x
-- Các thư viện yêu cầu được liệt kê trong `requirements.txt` (requests, colorama, concurrent.futures).
-
 ## Cách Sử Dụng:
 1. Sau khi chạy chương trình, bạn sẽ được yêu cầu nhấn `Enter` để bắt đầu quét.
 2. Công cụ sẽ quét mạng của bạn và hiển thị thông tin về các thiết bị, bao gồm:
