@@ -1,7 +1,6 @@
-```markdown
-# DiabloNetworkScan
+# DiabloNetwork
 
-**DiabloNetworkScan** là công cụ quét mạng LAN đơn giản sử dụng Python, cho phép bạn phát hiện và thu thập thông tin về các thiết bị đang kết nối trong mạng của mình. Công cụ này hỗ trợ quét dải IP, lấy địa chỉ MAC, và tra cứu thông tin về nhà sản xuất thiết bị qua MAC Address.
+**DiabloNetwork** là công cụ quét mạng LAN đơn giản sử dụng Python, cho phép bạn phát hiện và thu thập thông tin về các thiết bị đang kết nối trong mạng của mình. Công cụ này hỗ trợ quét dải IP, lấy địa chỉ MAC, và tra cứu thông tin về nhà sản xuất thiết bị qua MAC Address.
 
 ## Tính Năng:
 - Quét IP trong mạng LAN để phát hiện các thiết bị hoạt động.
@@ -12,7 +11,7 @@
 ## Cách Cài Đặt:
 1. **Clone repo này:**
    ```bash
-   git clone https://github.com/your-username/DiabloNetworkScan.git
+   git clone https://github.com/CHT7/DiabloNetwork.git
    ```
 
 2. **Cài đặt các phụ thuộc:**
@@ -24,7 +23,7 @@
 3. **Chạy dự án:**
    Sau khi cài đặt xong, bạn có thể chạy công cụ quét mạng:
    ```bash
-   python diablo_network_scan.py
+   python main.py
    ```
 
 ## Yêu Cầu:
@@ -48,7 +47,7 @@
 - Cải thiện khả năng quét và phân tích các dịch vụ đang chạy trên các thiết bị.
 
 ## Giới Thiệu:
-DiabloNetworkScan là một công cụ hữu ích dành cho các quản trị viên mạng và những ai muốn kiểm tra các thiết bị kết nối trong hệ thống mạng của mình. Công cụ này dễ sử dụng và có khả năng quét mạng nhanh chóng với thông tin chi tiết về các thiết bị.
+DiabloNetwork là một công cụ hữu ích dành cho các quản trị viên mạng và những ai muốn kiểm tra các thiết bị kết nối trong hệ thống mạng của mình. Công cụ này dễ sử dụng và có khả năng quét mạng nhanh chóng với thông tin chi tiết về các thiết bị.
 
 ## License:
 Đây là một dự án mã nguồn mở, bạn có thể sử dụng, sửa đổi, và phân phối lại mã nguồn theo giấy phép **MIT License**.
