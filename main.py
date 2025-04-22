@@ -16,22 +16,43 @@ R = Fore.LIGHTRED_EX
 Cyn = Fore.LIGHTCYAN_EX
 Ylw = Fore.LIGHTYELLOW_EX
 
-banner = """
+banner = r"""
 
      __     _                      _      __                 
   /\ \ \___| |___      _____  _ __| | __ / _\ ___ __ _ _ __  
  /  \/ / _ \ __\ \ /\ / / _ \| '__| |/ / \ \ / __/ _` | '_ \ 
 / /\  /  __/ |_ \ V  V / (_) | |  |   <  _\ \ (_| (_| | | | |
-\_\ \/ \___|\__| \_/\_/ \___/|_|  |_|\_\ \__/\___\__,_|_| |_|
+\_\ \/ \___|\__| \_/\_/ \___/|_|  |_|\_\ \__/\___\__,_|_| |_|  
 ----------------------- [+] DDIABLO ------------------------
 
 """
-
+    
 def print_banner():
     print(Cyn + banner)
 
+def get_network_from_ip():
+    try:
+        if os.name == 'nt':  
+            ipconfig_output = subprocess.check_output("ipconfig", encoding="utf-8")
+            for line in ipconfig_output.splitlines():
+                if "IPv4" in line:  
+                    ip = line.split(":")[1].strip()
+                    return ip + "/24" 
+        else: 
+            ipconfig_output = subprocess.check_output("ip a", shell=True, encoding="utf-8")
+            for line in ipconfig_output.splitlines():
+                if "inet " in line:  
+                    ip = line.split()[1]
+                    return ip.split('/')[0] + "/24" 
+    except Exception as e:
+        print(R + "Không thể lấy thông tin mạng!")
+        sys.exit(1)
+
 def get_user_input():
-    subnet_input = input("Nhập subnet (ví dụ: 192.168.1.0/24): ")
+    subnet_input = input("Nhập subnet (ví dụ: 192.168.1.0/24) hoặc để trống để tự động lấy subnet: ")
+    if not subnet_input:
+        subnet_input = get_network_from_ip()
+        print(G + f"Đã tự động lấy subnet: {subnet_input}")
     try:
         return ipaddress.ip_network(subnet_input, strict=False)
     except ValueError:
@@ -70,7 +91,7 @@ def scan_ip(ip):
     return [ip_str, mac, vendor]
 
 def main():
-    os.system("clear")
+    os.system('cls') if os.name == 'nt' else os.system('clear')
     print_banner()
     network = get_user_input()
     input("Nhấn 'Enter' để bắt đầu quét...")
@@ -80,7 +101,7 @@ def main():
 
     results = [r for r in results if r is not None]
 
-    os.system("clear")
+    os.system('cls') if os.name == 'nt' else os.system('clear')
     print_banner()
 
     if results:
