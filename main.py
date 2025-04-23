@@ -87,6 +87,26 @@ def guess_device(vendor, ttl):
             return "Cisco/Router"
     return "Unknown"
 
+def resolve_hostname(ip):
+    try:
+        # Ưu tiên dùng nbtscan nếu có sẵn (Termux)
+        if os.name != 'nt':
+            nbtscan_result = subprocess.getoutput(f"nbtscan -s : {ip}")
+            for line in nbtscan_result.splitlines():
+                if ip in line:
+                    parts = line.split(":")
+                    if len(parts) >= 2:
+                        name = parts[1].strip()
+                        if name and name.lower() != 'unknown':
+                            return name
+        # Nếu không thì fallback sang DNS
+        hostname = socket.gethostbyaddr(ip)[0]
+        if ".non-exists.ptr.local" in hostname or ip in hostname:
+            return "[Unknown]"
+        return hostname
+    except:
+        return "[Unknown]"
+
 def scan_ip(ip, args):
     ip = str(ip)
     ping_cmd = f"ping -c1 -W1 {ip}" if os.name != 'nt' else f"ping -n 1 -w 1000 {ip}"
@@ -108,10 +128,7 @@ def scan_ip(ip, args):
     if args.ping_only:
         return [ip, "[Ping Only]", "-", "-", str(ttl or "?"), "-"]
 
-    try:
-        hostname = socket.gethostbyaddr(ip)[0]
-    except:
-        hostname = "[Unknown]"
+    hostname = resolve_hostname(ip)
 
     mac = get_mac(ip)
     vendor = get_vendor(mac) if mac not in ["[Unknown]", "ff:ff:ff:ff:ff:ff"] else "[Not Found]"
