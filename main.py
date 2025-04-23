@@ -89,12 +89,22 @@ def scan_ip(ip):
 
 def guess_device(vendor, ttl):
     vendor = vendor.lower()
+    
+    # Thêm điều kiện nhận diện TTL 64 là macOS/Linux hoặc các thiết bị mạng
+    if ttl == 64:
+        if "apple" in vendor:
+            return "Apple (macOS)"
+        elif "linux" in vendor:
+            return "Linux"
+    
+    # Các điều kiện khác
     if "apple" in vendor:
         return "Apple"
     if "samsung" in vendor or "huawei" in vendor or "xiaomi" in vendor:
         return "Android"
     if "microsoft" in vendor or (ttl and int(ttl) in [128, 127]):
         return "Windows"
+    
     return "Unknown"
 
 def main():
