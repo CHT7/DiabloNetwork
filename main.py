@@ -34,13 +34,14 @@ def get_local_subnet():
                     ip = line.split(":")[1].strip()
                     return ip + "/24"
         else:
-            output = subprocess.check_output("ip a", shell=True, encoding="utf-8")
+            # Thay thế 'ip a' bằng 'ifconfig' cho Termux
+            output = subprocess.check_output("ifconfig", shell=True, encoding="utf-8")
             for line in output.splitlines():
                 if "inet " in line and not "127.0.0.1" in line:
                     ip = line.split()[1]
                     return ip.split('/')[0] + "/24"
-    except:
-        print(R + "Không thể lấy subnet mạng.")
+    except Exception as e:
+        print(R + f"Không thể lấy subnet mạng. Lỗi: {str(e)}")
         sys.exit(1)
 
 def scan_ip(ip):
