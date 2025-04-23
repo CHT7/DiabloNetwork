@@ -113,22 +113,14 @@ def main():
     print_banner()
 
     if results:
-<<<<<<< HEAD
         print(C + f"\nTổng thiết bị đang kết nối: {len(results)}\n")
         print(G + tabulate(
             [[i+1] + r for i, r in enumerate(results)],
             headers=["#", "IP", "MAC", "Vendor", "TTL", "Thiết bị"],
             tablefmt="grid"
         ))
-=======
-        numbered_results = [[i + 1] + r for i, r in enumerate(results)]
-
-        print(Cyn + "\nKết Quả:\n")
-        print(G + tabulate(numbered_results, headers=["STT", "IP", "MAC Address", "Vendor"], tablefmt="grid"))
->>>>>>> f2a62ed716881fe2649935d6a9640f4e30d6803b
     else:
         print(R + "Không phát hiện thiết bị nào!")
 
 if __name__ == "__main__":
     main()
-         
