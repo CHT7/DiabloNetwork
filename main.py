@@ -170,14 +170,14 @@ def main():
             )
             label_width = max(len(lbl) for lbl in labels)
 
-            total_width = label_width + col_width + 7  # icon + khoảng trắng + padding
+            total_width = label_width + col_width + 7  #khoảng trắng + padding
 
             for i, r in enumerate(results, 1):
                 title = f" Thiết bị #{i} "
                 print(G + "╔" + "═" * ((total_width - len(title)) // 2) + title + "═" * (total_width - (total_width - len(title)) // 2 - len(title)) + "╗")
 
-                for label, icon, value in zip(labels, icons, r):
-                    line = f"{icon} {label:<{label_width}} : {value}"
+                for label, value in zip(labels, r):
+                    line = f"{label:<{label_width}} : {value}"
                     print(G + f"║ {line:<{total_width}}║")
 
                 print(G + "╚" + "═" * total_width + "╝\n")
