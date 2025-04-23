@@ -105,8 +105,10 @@ def main():
     print_banner()
 
     if results:
+        numbered_results = [[i + 1] + r for i, r in enumerate(results)]
+
         print(Cyn + "\nKết Quả:\n")
-        print(G + tabulate(results, headers=["IP", "MAC Address", "Vendor"], tablefmt="grid"))
+        print(G + tabulate(numbered_results, headers=["STT", "IP", "MAC Address", "Vendor"], tablefmt="grid"))
     else:
         print(R + "\nKhông tìm thấy thiết bị nào trong mạng!")
 
@@ -114,3 +116,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+         
