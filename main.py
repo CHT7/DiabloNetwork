@@ -29,7 +29,6 @@ def print_banner():
 ------------------ [+] DDIABLO ------------------------------
 """)
 
-
 def get_local_subnet():
     try:
         if os.name == 'nt':
@@ -48,7 +47,6 @@ def get_local_subnet():
         print(R + f"Không thể lấy subnet mạng. Lỗi: {str(e)}")
         sys.exit(1)
 
-
 def get_mac(ip):
     if os.name == "nt":
         arp_out = subprocess.getoutput(f"arp -a {ip}")
@@ -57,7 +55,6 @@ def get_mac(ip):
 
     mac_match = re.search(r"(([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2}))", arp_out)
     return mac_match.group(0) if mac_match else "[Unknown]"
-
 
 def get_vendor(mac):
     mac = mac.upper()
@@ -74,24 +71,21 @@ def get_vendor(mac):
         pass
     return "[Not Found]"
 
-
 def guess_device(vendor, ttl):
     vendor = vendor.lower()
-    if ttl == 64:
-        if "apple" in vendor:
-            return "Apple (macOS)"
-        elif "linux" in vendor:
-            return "Linux"
-    
-    if "apple" in vendor:
-        return "Apple"
-    if "samsung" in vendor or "huawei" in vendor or "xiaomi" in vendor:
-        return "Android"
-    if "microsoft" in vendor or (ttl and int(ttl) in [128, 127]):
-        return "Windows"
-    
+    if ttl:
+        ttl = int(ttl)
+        if ttl <= 64:
+            if "apple" in vendor:
+                return "macOS/iOS"
+            elif "linux" in vendor:
+                return "Linux"
+            return "Android/Unix-like"
+        elif ttl <= 128:
+            return "Windows"
+        elif ttl <= 255:
+            return "Cisco/Router"
     return "Unknown"
-
 
 def scan_ip(ip, args):
     ip = str(ip)
@@ -125,13 +119,11 @@ def scan_ip(ip, args):
 
     return [ip, hostname, mac, vendor, str(ttl or "?"), device_type]
 
-
 def parse_args():
     parser = argparse.ArgumentParser(description="Network Scanner")
     parser.add_argument("--ping-only", action="store_true", help="Chỉ ping, không lấy MAC/vendor")
     parser.add_argument("--show-offline", action="store_true", help="Hiển thị cả thiết bị offline")
     return parser.parse_args()
-
 
 def main():
     args = parse_args()
@@ -171,18 +163,26 @@ def main():
                 tablefmt="double_outline"
             ))
         else:
+            labels = ["IP", "Host", "MAC", "Vendor", "TTL", "Thiết bị"]
+            col_width = max(
+                max(len(str(item[i])) for item in results)  # giá trị dài nhất ở mỗi cột
+                for i in range(len(labels))
+            )
+            label_width = max(len(lbl) for lbl in labels)
+
+            total_width = label_width + col_width + 7  # icon + khoảng trắng + padding
+
             for i, r in enumerate(results, 1):
-                print(G + f"╔═══ Thiết bị #{i} ═══╗")
-                print(G + f"║ IP       : {r[0]}")
-                print(G + f"║ Host     : {r[1]}")
-                print(G + f"║ MAC      : {r[2]}")
-                print(G + f"║ Vendor   : {r[3]}")
-                print(G + f"║ TTL      : {r[4]}")
-                print(G + f"║ Thiết bị : {r[5]}")
-                print(G + f"╚════════════════════╝\n")
+                title = f" Thiết bị #{i} "
+                print(G + "╔" + "═" * ((total_width - len(title)) // 2) + title + "═" * (total_width - (total_width - len(title)) // 2 - len(title)) + "╗")
+
+                for label, icon, value in zip(labels, icons, r):
+                    line = f"{icon} {label:<{label_width}} : {value}"
+                    print(G + f"║ {line:<{total_width}}║")
+
+                print(G + "╚" + "═" * total_width + "╝\n")
     else:
         print(R + "Không phát hiện thiết bị nào!")
-
 
 if __name__ == "__main__":
     main()
