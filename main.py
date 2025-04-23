@@ -1,3 +1,4 @@
+import socket
 import os
 import sys
 import subprocess
@@ -62,6 +63,13 @@ def scan_ip(ip):
                 ttl = None
             break
 
+    # Dò hostname qua DNS ngược
+    try:
+        hostname = socket.gethostbyaddr(ip)[0]
+    except:
+        hostname = "[Unknown]"
+
+    # Lấy MAC
     arp_cmd = f"arp -a {ip}"
     arp_out = subprocess.getoutput(arp_cmd)
 
@@ -85,7 +93,7 @@ def scan_ip(ip):
 
     device_type = guess_device(vendor, ttl)
 
-    return [ip, mac, vendor, str(ttl or "?"), device_type]
+    return [ip, hostname, mac, vendor, str(ttl or "?"), device_type]
 
 def guess_device(vendor, ttl):
     vendor = vendor.lower()
@@ -127,9 +135,10 @@ def main():
         print(C + f"\nTổng thiết bị đang kết nối: {len(results)}\n")
         print(G + tabulate(
             [[i+1] + r for i, r in enumerate(results)],
-            headers=["#", "IP", "MAC", "Vendor", "TTL", "Thiết bị"],
-            tablefmt="grid"
+            headers=["#", "IP", "Host", "MAC", "Vendor", "TTL", "Thiết bị"],
+            tablefmt="double_outline"
         ))
+
     else:
         print(R + "Không phát hiện thiết bị nào!")
 
