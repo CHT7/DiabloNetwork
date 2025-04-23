@@ -4,7 +4,9 @@ import sys
 import subprocess
 import ipaddress
 import requests
-from concurrent.futures import ThreadPoolExecutor
+import re
+import argparse
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from colorama import Fore, init
 from tabulate import tabulate
 
@@ -14,6 +16,8 @@ G = Fore.LIGHTGREEN_EX
 R = Fore.LIGHTRED_EX
 C = Fore.LIGHTCYAN_EX
 Y = Fore.LIGHTYELLOW_EX
+
+vendor_cache = {}
 
 def print_banner():
     print(C + r"""
@@ -35,7 +39,6 @@ def get_local_subnet():
                     ip = line.split(":")[1].strip()
                     return ip + "/24"
         else:
-            # Thay thế 'ip a' bằng 'ifconfig' cho Termux
             output = subprocess.check_output("ifconfig", shell=True, encoding="utf-8")
             for line in output.splitlines():
                 if "inet " in line and not "127.0.0.1" in line:
@@ -45,13 +48,58 @@ def get_local_subnet():
         print(R + f"Không thể lấy subnet mạng. Lỗi: {str(e)}")
         sys.exit(1)
 
-def scan_ip(ip):
+
+def get_mac(ip):
+    if os.name == "nt":
+        arp_out = subprocess.getoutput(f"arp -a {ip}")
+    else:
+        arp_out = subprocess.getoutput(f"ip neigh show {ip}")
+
+    mac_match = re.search(r"(([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2}))", arp_out)
+    return mac_match.group(0) if mac_match else "[Unknown]"
+
+
+def get_vendor(mac):
+    mac = mac.upper()
+    if mac in vendor_cache:
+        return vendor_cache[mac]
+
+    try:
+        r = requests.get(f"https://macvendors.com/query/{mac}", timeout=2)
+        if r.status_code == 200:
+            vendor = r.text.strip()
+            vendor_cache[mac] = vendor
+            return vendor
+    except:
+        pass
+    return "[Not Found]"
+
+
+def guess_device(vendor, ttl):
+    vendor = vendor.lower()
+    if ttl == 64:
+        if "apple" in vendor:
+            return "Apple (macOS)"
+        elif "linux" in vendor:
+            return "Linux"
+    
+    if "apple" in vendor:
+        return "Apple"
+    if "samsung" in vendor or "huawei" in vendor or "xiaomi" in vendor:
+        return "Android"
+    if "microsoft" in vendor or (ttl and int(ttl) in [128, 127]):
+        return "Windows"
+    
+    return "Unknown"
+
+
+def scan_ip(ip, args):
     ip = str(ip)
     ping_cmd = f"ping -c1 -W1 {ip}" if os.name != 'nt' else f"ping -n 1 -w 1000 {ip}"
     result = subprocess.getoutput(ping_cmd)
 
     if any(x in result.lower() for x in ["unreachable", "timed out", "100%"]):
-        return None
+        return None if not args.show_offline else [ip, "[Offline]", "-", "-", "-", "-"]
 
     ttl = None
     for line in result.splitlines():
@@ -63,84 +111,78 @@ def scan_ip(ip):
                 ttl = None
             break
 
-    # Dò hostname qua DNS ngược
+    if args.ping_only:
+        return [ip, "[Ping Only]", "-", "-", str(ttl or "?"), "-"]
+
     try:
         hostname = socket.gethostbyaddr(ip)[0]
     except:
         hostname = "[Unknown]"
 
-    # Lấy MAC
-    arp_cmd = f"arp -a {ip}"
-    arp_out = subprocess.getoutput(arp_cmd)
-
-    mac = "[Unknown]"
-    for line in arp_out.splitlines():
-        if ip in line:
-            for part in line.split():
-                if ":" in part or "-" in part:
-                    mac = part.strip()
-                    break
-            break
-
-    vendor = "[Not Found]"
-    try:
-        if mac not in ["[Unknown]", "ff:ff:ff:ff:ff:ff"]:
-            r = requests.get(f"https://macvendors.com/query/{mac}", timeout=2)
-            if r.status_code == 200:
-                vendor = r.text.strip()
-    except:
-        pass
-
+    mac = get_mac(ip)
+    vendor = get_vendor(mac) if mac not in ["[Unknown]", "ff:ff:ff:ff:ff:ff"] else "[Not Found]"
     device_type = guess_device(vendor, ttl)
 
     return [ip, hostname, mac, vendor, str(ttl or "?"), device_type]
 
-def guess_device(vendor, ttl):
-    vendor = vendor.lower()
-    
-    # Thêm điều kiện nhận diện TTL 64 là macOS/Linux hoặc các thiết bị mạng
-    if ttl == 64:
-        if "apple" in vendor:
-            return "Apple (macOS)"
-        elif "linux" in vendor:
-            return "Linux"
-    
-    # Các điều kiện khác
-    if "apple" in vendor:
-        return "Apple"
-    if "samsung" in vendor or "huawei" in vendor or "xiaomi" in vendor:
-        return "Android"
-    if "microsoft" in vendor or (ttl and int(ttl) in [128, 127]):
-        return "Windows"
-    
-    return "Unknown"
+
+def parse_args():
+    parser = argparse.ArgumentParser(description="Network Scanner")
+    parser.add_argument("--ping-only", action="store_true", help="Chỉ ping, không lấy MAC/vendor")
+    parser.add_argument("--show-offline", action="store_true", help="Hiển thị cả thiết bị offline")
+    return parser.parse_args()
+
 
 def main():
+    args = parse_args()
     os.system('cls' if os.name == 'nt' else 'clear')
     print_banner()
 
     subnet = get_local_subnet()
     print(G + f"Đang quét mạng: {subnet}\n")
 
-    network = ipaddress.ip_network(subnet, strict=False)
-    with ThreadPoolExecutor(max_workers=100) as executor:
-        results = list(executor.map(scan_ip, network.hosts()))
+    network = list(ipaddress.ip_network(subnet, strict=False).hosts())
 
-    results = [r for r in results if r]
+    results = []
+    total = len(network)
+
+    with ThreadPoolExecutor(max_workers=100) as executor:
+        future_to_ip = {executor.submit(scan_ip, ip, args): ip for ip in network}
+        for i, future in enumerate(as_completed(future_to_ip), 1):
+            ip = future_to_ip[future]
+            try:
+                result = future.result()
+                if result:
+                    results.append(result)
+            except Exception as e:
+                pass
+            percent = (i / total) * 100
+            print(f"{C}[{i}/{total}] ({percent:.1f}%)", end='\r')
 
     os.system('cls' if os.name == 'nt' else 'clear')
     print_banner()
 
     if results:
-        print(C + f"\nTổng thiết bị đang kết nối: {len(results)}\n")
-        print(G + tabulate(
-            [[i+1] + r for i, r in enumerate(results)],
-            headers=["#", "IP", "Host", "MAC", "Vendor", "TTL", "Thiết bị"],
-            tablefmt="double_outline"
-        ))
-
+        print(C + f"\nTổng thiết bị phát hiện: {len(results)}\n")
+        if os.name == 'nt':
+            print(G + tabulate(
+                [[i+1] + r for i, r in enumerate(results)],
+                headers=["#", "IP", "Host", "MAC", "Vendor", "TTL", "Thiết bị"],
+                tablefmt="double_outline"
+            ))
+        else:
+            for i, r in enumerate(results, 1):
+                print(G + f"╔═══ Thiết bị #{i} ═══╗")
+                print(G + f"║ IP       : {r[0]}")
+                print(G + f"║ Host     : {r[1]}")
+                print(G + f"║ MAC      : {r[2]}")
+                print(G + f"║ Vendor   : {r[3]}")
+                print(G + f"║ TTL      : {r[4]}")
+                print(G + f"║ Thiết bị : {r[5]}")
+                print(G + f"╚════════════════════╝\n")
     else:
         print(R + "Không phát hiện thiết bị nào!")
+
 
 if __name__ == "__main__":
     main()
