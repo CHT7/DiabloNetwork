@@ -173,15 +173,28 @@ def parse_args():
 def print_results_in_pairs(results):
     labels = ["IP", "Host", "MAC", "Vendor", "TTL", "Thiết bị"]
     pairs = [results[i:i+2] for i in range(0, len(results), 2)]
+    label_width = max(len(lbl) for lbl in labels)
 
     for idx, pair in enumerate(pairs):
-        lines = [""] * len(labels)
-        for col in range(len(pair)):
-            r = pair[col]
-            for i, (label, value) in enumerate(zip(labels, r)):
-                prefix = f"{idx*2+col+1}. {label}: {value}"
-                lines[i] += f"{prefix:<40}"
-        print(G + "\n".join(lines))
+        blocks = []
+
+        for i, r in enumerate(pair):
+            title = f" Thiết bị #{idx*2 + i + 1} "
+            col_width = max(len(str(v)) for v in r)
+            total_width = label_width + col_width + 7
+
+            block = []
+            block.append("╔" + "═" * ((total_width - len(title)) // 2) + title + "═" * (total_width - (total_width - len(title)) // 2 - len(title)) + "╗")
+            for label, value in zip(labels, r):
+                line = f"{label:<{label_width}} : {value}"
+                block.append(f"║ {line:<{total_width}}║")
+            block.append("╚" + "═" * total_width + "╝")
+            blocks.append(block)
+
+        # In hai block cạnh nhau
+        for lines in zip(*blocks):
+            print(G + lines[0] + "  " + (lines[1] if len(lines) > 1 else ""))
+
         print()
 
 def main():
