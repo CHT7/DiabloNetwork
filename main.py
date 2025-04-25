@@ -9,6 +9,8 @@ import argparse
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from colorama import Fore, init
 from tabulate import tabulate
+import shutil
+import platform
 
 init(autoreset=True)
 
@@ -47,6 +49,12 @@ def get_local_subnet():
         print(R + f"Không thể lấy subnet mạng. Lỗi: {str(e)}")
         sys.exit(1)
 
+def has_nmap():
+    return shutil.which("nmap") is not None
+
+def is_termux():
+    return "com.termux" in os.getenv("PREFIX", "")
+
 def get_mac(ip):
     if os.name == "nt":
         arp_out = subprocess.getoutput(f"arp -a {ip}")
@@ -71,20 +79,34 @@ def get_vendor(mac):
         pass
     return "[Not Found]"
 
+def get_mac_and_vendor_with_nmap(ip):
+    try:
+        output = subprocess.getoutput(f"nmap -sP {ip}")
+        mac_match = re.search(r"MAC Address: ([0-9A-F:]{17}) \((.*?)\)", output)
+        if mac_match:
+            mac = mac_match.group(1)
+            vendor = mac_match.group(2)
+            return mac, vendor
+    except:
+        pass
+    return "[Unknown]", "[Not Found]"
+
 def guess_device(vendor, ttl):
     vendor = vendor.lower()
     if ttl:
         ttl = int(ttl)
         if ttl <= 64:
             if "apple" in vendor:
-                return "macOS/iOS"
+                return "iOS/macOS"
             elif "linux" in vendor:
                 return "Linux"
             return "Android/Unix-like"
         elif ttl <= 128:
+            if "apple" in vendor:
+                return "iOS/macOS"
             return "Windows"
         elif ttl <= 255:
-            return "Cisco/Router"
+            return "Router/Embedded"
     return "Unknown"
 
 def resolve_hostname(ip):
@@ -130,8 +152,14 @@ def scan_ip(ip, args):
 
     hostname = resolve_hostname(ip)
 
-    mac = get_mac(ip)
-    vendor = get_vendor(mac) if mac not in ["[Unknown]", "ff:ff:ff:ff:ff:ff"] else "[Not Found]"
+    # >>> Tự động ưu tiên dùng nmap nếu có hoặc đang ở Termux
+    use_nmap = is_termux() or has_nmap()
+    if use_nmap:
+        mac, vendor = get_mac_and_vendor_with_nmap(ip)
+    else:
+        mac = get_mac(ip)
+        vendor = get_vendor(mac) if mac not in ["[Unknown]", "ff:ff:ff:ff:ff:ff"] else "[Not Found]"
+
     device_type = guess_device(vendor, ttl)
 
     return [ip, hostname, mac, vendor, str(ttl or "?"), device_type]
@@ -141,6 +169,20 @@ def parse_args():
     parser.add_argument("--ping-only", action="store_true", help="Chỉ ping, không lấy MAC/vendor")
     parser.add_argument("--show-offline", action="store_true", help="Hiển thị cả thiết bị offline")
     return parser.parse_args()
+
+def print_results_in_pairs(results):
+    labels = ["IP", "Host", "MAC", "Vendor", "TTL", "Thiết bị"]
+    pairs = [results[i:i+2] for i in range(0, len(results), 2)]
+
+    for idx, pair in enumerate(pairs):
+        lines = [""] * len(labels)
+        for col in range(len(pair)):
+            r = pair[col]
+            for i, (label, value) in enumerate(zip(labels, r)):
+                prefix = f"{idx*2+col+1}. {label}: {value}"
+                lines[i] += f"{prefix:<40}"
+        print(G + "\n".join(lines))
+        print()
 
 def main():
     args = parse_args()
@@ -173,7 +215,9 @@ def main():
 
     if results:
         print(C + f"\nTổng thiết bị phát hiện: {len(results)}\n")
-        if os.name == 'nt':
+        if is_termux():
+            print_results_in_pairs(results)
+        elif os.name == 'nt':
             print(G + tabulate(
                 [[i+1] + r for i, r in enumerate(results)],
                 headers=["#", "IP", "Host", "MAC", "Vendor", "TTL", "Thiết bị"],
@@ -182,12 +226,12 @@ def main():
         else:
             labels = ["IP", "Host", "MAC", "Vendor", "TTL", "Thiết bị"]
             col_width = max(
-                max(len(str(item[i])) for item in results)  # giá trị dài nhất ở mỗi cột
+                max(len(str(item[i])) for item in results)
                 for i in range(len(labels))
             )
             label_width = max(len(lbl) for lbl in labels)
 
-            total_width = label_width + col_width + 7  #khoảng trắng + padding
+            total_width = label_width + col_width + 7
 
             for i, r in enumerate(results, 1):
                 title = f" Thiết bị #{i} "
@@ -198,8 +242,6 @@ def main():
                     print(G + f"║ {line:<{total_width}}║")
 
                 print(G + "╚" + "═" * total_width + "╝\n")
-    else:
-        print(R + "Không phát hiện thiết bị nào!")
 
 if __name__ == "__main__":
     main()
