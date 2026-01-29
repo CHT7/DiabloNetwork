@@ -1,4 +1,3 @@
-```markdown
 # ⚡ DiabloNetwork V3.0 - THE GOD MODE NETWORK SCANNER ⚡
 
 **DiabloNetwork** là một công cụ quét mạng LAN mạnh mẽ, nhanh chóng và thông minh được viết bằng Python. Phiên bản V3.0 "God Mode" mang đến khả năng nhận diện thiết bị chuyên sâu, quét cổng dịch vụ và dự đoán hệ điều hành với độ chính xác cao, hỗ trợ hoàn hảo trên Windows, Linux và đặc biệt là **Termux**.
